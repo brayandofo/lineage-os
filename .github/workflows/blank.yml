@@ -32,6 +32,7 @@ jobs:
         export PATH=~/bin:$PATH
         mkdir -p ~/lineage-gsi
         cd ~/lineage-gsi
+        # LINK OFICIAL CORRIGIDO E BRANQUADO PARA LINEAGE-19.1
         repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
         repo sync -c -j4 --no-tags --no-clone-bundle
 
