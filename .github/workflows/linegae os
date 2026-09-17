@@ -1,1 +1,69 @@
+name: Compilar LineageOS GSI Do Zero
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    # NOVO LIMPADOR: Mais rápido, seguro e não quebra o APT
+    - name: Liberar Espaço em Disco de Forma Segura
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+
+    - name: Instalar Dependências e Compiladores do Ubuntu
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install -y git openjdk-17-jdk python3 repo make bc bison curl flex g++ gperf libncurses5-dev libssl-dev libxml2-utils unzip zip zlib1g-dev zlib1g-dev:i386 ccache lzop rsync
+
+    - name: Configurar o Google Repo e Identidade Git
+      run: |
+        mkdir -p ~/bin
+        curl https://googleapis.com > ~/bin/repo
+        chmod a+x ~/bin/repo
+        export PATH=~/bin:$PATH
+        git config --global user.name "Brayan"
+        git config --global user.email "brayan@example.com"
+
+    - name: Baixar Código Fonte do LineageOS 19.1 (Shallow Clone)
+      run: |
+        mkdir ~/lineage-gsi && cd ~/lineage-gsi
+        ~/bin/repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
+        ~/bin/repo sync -c -j4 --no-tags --no-clone-bundle
+
+    - name: Iniciar Compilação Real da GSI (ARM32 + Binder64)
+      run: |
+        cd ~/lineage-gsi
+        source build/envsetup.sh
+        
+        # Alvo técnico universal para ARM32 Binder64 no LineageOS
+        lunch lineage_a64_ab-userdebug || lunch aosp_a64_ab-userdebug
+        
+        # Proteções estritas de ambiente para evitar quebras
+        export CCACHE_DISABLE=1
+        export ALLOW_MISSING_DEPENDENCIES=true
+        export TEMPORARY_DISABLE_PATH_RESTRICTIONS=1
+        
+        # Dispara a compilação do arquivo de sistema bruto
+        make systemimage -j$(nproc) ALLOW_MISSING_DEPENDENCIES=true
+
+    - name: Compactar Imagem system.img Gerada
+      run: |
+        cd ~/lineage-gsi/out/target/product/* || true
+        zip -r meu_android_do_zero.zip system.img
+
+    - name: Disponibilizar Link para Download da sua GSI
+      uses: actions/upload-artifact@v4
+      with:
+        name: GSI-Lineage-12-Do-Zero
+        path: ~/lineage-gsi/out/target/product/*/*.zip
