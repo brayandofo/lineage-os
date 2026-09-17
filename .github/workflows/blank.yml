@@ -1,21 +1,24 @@
 name: Compilar LineageOS GSI Do Zero
 
 on:
-  workflow_dispatch: # Abre o botão cinza para você clicar e rodar no navegador
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Liberar Espaço Máximo no Servidor do GitHub
-      uses: easimon/maximize-build-space@master
+    # NOVO LIMPADOR: Mais rápido, seguro e não quebra o APT
+    - name: Liberar Espaço em Disco de Forma Segura
+      uses: jlumbroso/free-disk-space@main
       with:
-        root-reserve-mb: 4096
-        swap-size-mb: 2048
-        remove-dotnet: 'true'
-        remove-android: 'true'
-        remove-haskell: 'true'
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
 
     - name: Instalar Dependências e Compiladores do Ubuntu
       run: |
