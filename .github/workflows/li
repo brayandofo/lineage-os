@@ -30,18 +30,20 @@ jobs:
         mkdir -p ~/bin
         curl https://googleapis.com > ~/bin/repo
         chmod a+x ~/bin/repo
-        export PATH=~/bin:$PATH
         git config --global user.name "Brayan"
         git config --global user.email "brayan@example.com"
 
     - name: Baixar Codigo Fonte do LineageOS 19.1
       run: |
-        mkdir ~/lineage-gsi && cd ~/lineage-gsi
-        ~/bin/repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
-        ~/bin/repo sync -c -j4 --no-tags --no-clone-bundle
+        export PATH=~/bin:$PATH
+        mkdir -p ~/lineage-gsi
+        cd ~/lineage-gsi
+        repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
+        repo sync -c -j4 --no-tags --no-clone-bundle
 
     - name: Iniciar Compilacao Real da GSI
       run: |
+        export PATH=~/bin:$PATH
         cd ~/lineage-gsi
         source build/envsetup.sh
         lunch lineage_a64_ab-userdebug || lunch aosp_a64_ab-userdebug
