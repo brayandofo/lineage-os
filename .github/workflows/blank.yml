@@ -1,36 +1,66 @@
-# This is a basic workflow to help you get started with Actions
+name: Compilar LineageOS GSI Do Zero
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch: # Abre o botão cinza para você clicar e rodar no navegador
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+    - name: Liberar Espaço Máximo no Servidor do GitHub
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 4096
+        swap-size-mb: 2048
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+    - name: Instalar Dependências e Compiladores do Ubuntu
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install -y git openjdk-17-jdk python3 repo make bc bison curl flex g++ gperf libncurses5-dev libssl-dev libxml2-utils unzip zip zlib1g-dev zlib1g-dev:i386 ccache lzop rsync
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+    - name: Configurar o Google Repo e Identidade Git
+      run: |
+        mkdir -p ~/bin
+        curl https://googleapis.com > ~/bin/repo
+        chmod a+x ~/bin/repo
+        export PATH=~/bin:$PATH
+        git config --global user.name "Brayan"
+        git config --global user.email "brayan@example.com"
+
+    - name: Baixar Código Fonte do LineageOS 19.1 (Shallow Clone)
+      run: |
+        mkdir ~/lineage-gsi && cd ~/lineage-gsi
+        ~/bin/repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
+        ~/bin/repo sync -c -j4 --no-tags --no-clone-bundle
+
+    - name: Iniciar Compilação Real da GSI (ARM32 + Binder64)
+      run: |
+        cd ~/lineage-gsi
+        source build/envsetup.sh
+        
+        # Alvo técnico universal para ARM32 Binder64 no LineageOS
+        lunch lineage_a64_ab-userdebug || lunch aosp_a64_ab-userdebug
+        
+        # Proteções estritas de ambiente para evitar quebras
+        export CCACHE_DISABLE=1
+        export ALLOW_MISSING_DEPENDENCIES=true
+        export TEMPORARY_DISABLE_PATH_RESTRICTIONS=1
+        
+        # Dispara a compilação do arquivo de sistema bruto
+        make systemimage -j$(nproc) ALLOW_MISSING_DEPENDENCIES=true
+
+    - name: Compactar Imagem system.img Gerada
+      run: |
+        cd ~/lineage-gsi/out/target/product/* || true
+        zip -r meu_android_do_zero.zip system.img
+
+    - name: Disponibilizar Link para Download da sua GSI
+      uses: actions/upload-artifact@v4
+      with:
+        name: GSI-Lineage-12-Do-Zero
+        path: ~/lineage-gsi/out/target/product/*/*.zip
