@@ -8,8 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    # NOVO LIMPADOR: Mais rápido, seguro e não quebra o APT
-    - name: Liberar Espaço em Disco de Forma Segura
+    - name: Liberar Espaco em Disco de Forma Segura
       uses: jlumbroso/free-disk-space@main
       with:
         tool-cache: true
@@ -20,7 +19,7 @@ jobs:
         docker-images: true
         swap-storage: false
 
-    - name: Instalar Dependências e Compiladores do Ubuntu
+    - name: Instalar Dependencias e Compiladores do Ubuntu
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
@@ -31,30 +30,26 @@ jobs:
         mkdir -p ~/bin
         curl https://googleapis.com > ~/bin/repo
         chmod a+x ~/bin/repo
-        export PATH=~/bin:$PATH
         git config --global user.name "Brayan"
         git config --global user.email "brayan@example.com"
 
-    - name: Baixar Código Fonte do LineageOS 19.1 (Shallow Clone)
+    - name: Baixar Codigo Fonte do LineageOS 19.1
       run: |
-        mkdir ~/lineage-gsi && cd ~/lineage-gsi
-        ~/bin/repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
-        ~/bin/repo sync -c -j4 --no-tags --no-clone-bundle
+        export PATH=~/bin:$PATH
+        mkdir -p ~/lineage-gsi
+        cd ~/lineage-gsi
+        repo init -u https://github.com -b lineage-19.1 --depth=1 --git-lfs --no-clone-bundle
+        repo sync -c -j4 --no-tags --no-clone-bundle
 
-    - name: Iniciar Compilação Real da GSI (ARM32 + Binder64)
+    - name: Iniciar Compilacao Real da GSI
       run: |
+        export PATH=~/bin:$PATH
         cd ~/lineage-gsi
         source build/envsetup.sh
-        
-        # Alvo técnico universal para ARM32 Binder64 no LineageOS
         lunch lineage_a64_ab-userdebug || lunch aosp_a64_ab-userdebug
-        
-        # Proteções estritas de ambiente para evitar quebras
         export CCACHE_DISABLE=1
         export ALLOW_MISSING_DEPENDENCIES=true
         export TEMPORARY_DISABLE_PATH_RESTRICTIONS=1
-        
-        # Dispara a compilação do arquivo de sistema bruto
         make systemimage -j$(nproc) ALLOW_MISSING_DEPENDENCIES=true
 
     - name: Compactar Imagem system.img Gerada
